@@ -6,6 +6,7 @@ Start an OpenAI-compatible AI API on your accelerator. (Full details in [BEHIND_
 
 - Linux
 - Docker or Podman
+- curl
 - A supported NVIDIA, AMD, or Intel accelerator
 - 8 GB of free device memory
 - Internet access for the first model download
@@ -28,7 +29,14 @@ The script detects the accelerator and starts its vLLM image. The first start do
 ## 3. Send a request
 
 ```bash
-./request.sh
+curl http://localhost:8000/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "qwen3.5-2b",
+    "messages": [
+      {"role": "user", "content": "Explain containers in three sentences."}
+    ]
+  }'
 ```
 
 The response comes from an OpenAI-compatible endpoint at `http://localhost:8000/v1`.

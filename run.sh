@@ -20,6 +20,11 @@ else
   exit 1
 fi
 
+if ! command -v curl >/dev/null 2>&1; then
+  echo "curl is required." >&2
+  exit 1
+fi
+
 if "$engine" container inspect "$name" >/dev/null 2>&1; then
   echo "$name already exists. Run ./stop.sh first." >&2
   exit 1
@@ -80,4 +85,18 @@ esac
 "$engine" run -d --name "$name" "$@" --ipc=host -p 8000:8000 \
   -v "$volume:/root/.cache/huggingface" "$image"
 
-echo "vLLM is starting. Run ./request.sh to wait for it and send a request."
+attempt=0
+printf "Waiting for vLLM"
+until curl --fail --silent http://localhost:8000/v1/models >/dev/null 2>&1; do
+  attempt=$((attempt + 1))
+  if [ "$attempt" -ge 120 ]; then
+    echo
+    echo "vLLM did not become ready within 10 minutes." >&2
+    echo "Read the logs with: $engine logs $name" >&2
+    exit 1
+  fi
+  printf "."
+  sleep 5
+done
+echo
+echo "vLLM is ready at http://localhost:8000/v1"
