@@ -1,7 +1,6 @@
 .git
 .github
 .gitignore
-campaign
-compose*.yaml
 README.md
-
+BEHIND_THE_SCENES.md
+*.sh
