@@ -1,16 +1,31 @@
 # vLLM Zero to Hero
 
-Run an OpenAI-compatible vLLM API with one container. Qwen3.5-2B is the default example. The first run downloads its weights from Hugging Face.
+Run an OpenAI-compatible vLLM API on a supported accelerator. Qwen3.5-2B is the default example. The first run downloads its weights from Hugging Face.
 
-## Requirements
+At the center of this project is one command:
+
+```bash
+vllm serve Qwen/Qwen3.5-2B
+```
+
+The container supplies vLLM and the dependencies for your accelerator.
+
+## Container requirements
 
 - Linux
-- 8 GB of free GPU memory
+- 8 GB of free device memory
 - Docker or Podman
-- NVIDIA GPU with a working NVIDIA Container Toolkit, or AMD GPU with ROCm support
+- Supported NVIDIA, AMD, or Intel accelerator with its container runtime configured
 - Internet access and about 5 GB of free disk space for the model download
 
-Windows users need a Linux environment with GPU passthrough. A Podman machine on WSL does not expose an AMD GPU. For AMD on Windows, use a supported WSL distribution and follow the [ROCm WSL container setup](https://rocm.docs.amd.com/projects/radeon-ryzen/en/latest/docs/install/installrad/wsl/legacywsl/install-pytorch.html).
+Check the [vLLM hardware documentation](https://docs.vllm.ai/en/latest/getting_started/installation/) for device requirements. Windows users need a Linux environment with GPU passthrough.
+
+## Clone
+
+```bash
+git clone https://github.com/red-hat-ai-dev/vLLM-zero-to-hero.git
+cd vLLM-zero-to-hero
+```
 
 ## NVIDIA
 
@@ -43,6 +58,32 @@ podman run --rm --device /dev/kfd --device /dev/dri \
 ```
 
 Use `docker` in place of `podman` when needed.
+
+## Intel XPU
+
+Docker or Podman:
+
+```bash
+podman run --rm --device /dev/dri:/dev/dri \
+  -v /dev/dri/by-path:/dev/dri/by-path \
+  --privileged --ipc=host -p 8000:8000 \
+  -v vllm-models:/root/.cache/huggingface \
+  ghcr.io/red-hat-ai-dev/vllm-zero-to-hero:xpu
+```
+
+Use `docker` in place of `podman` when needed.
+
+## Other hardware
+
+Install the vLLM backend for your platform, then run:
+
+```bash
+vllm serve Qwen/Qwen3.5-2B \
+  --served-model-name qwen3.5-2b \
+  --max-model-len 8192
+```
+
+See the [vLLM installation guide](https://docs.vllm.ai/en/latest/getting_started/installation/) for Apple Silicon, Google TPU, CPU, and hardware plugins.
 
 ## Send a request
 
@@ -81,6 +122,14 @@ docker build \
   -t vllm-zero-to-hero:rocm .
 ```
 
+Intel XPU:
+
+```bash
+docker build \
+  --build-arg VLLM_IMAGE=docker.io/vllm/vllm-openai-xpu:v0.28.0 \
+  -t vllm-zero-to-hero:xpu .
+```
+
 Pass another model and its server options after the image name:
 
 ```bash
@@ -96,5 +145,6 @@ Set `HF_TOKEN` for a gated model. Review the model license before use.
 
 - vLLM 0.28.0
 - OpenAI-compatible API on port 8000
+- CUDA, ROCm, and XPU image variants
 
 The example uses Qwen3.5-2B under Apache-2.0. Review its [model card](https://huggingface.co/Qwen/Qwen3.5-2B) before use.
