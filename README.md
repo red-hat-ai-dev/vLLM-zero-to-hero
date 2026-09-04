@@ -1,6 +1,6 @@
 # vLLM Zero to Hero
 
-Start an OpenAI-compatible AI API on your accelerator.
+Start an OpenAI-compatible AI API on your accelerator. (Full details in [BEHIND_THE_SCENES](https://github.com/red-hat-ai-dev/vLLM-zero-to-hero/blob/main/BEHIND_THE_SCENES.md)
 
 ## Requirements
 
