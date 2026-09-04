@@ -6,7 +6,7 @@ Hi {{first_name}},
 
 Try an OpenAI-compatible AI endpoint on your own hardware. The container includes the vLLM runtime and uses Qwen3.5-2B as a small example model.
 
-Clone the repository, choose the command for your accelerator, and send the sample request. The walkthrough covers Docker and Podman on NVIDIA, AMD, and Intel hardware.
+Clone the repository, run one launcher, and send the sample request. The launcher detects supported NVIDIA, AMD, and Intel accelerators with Docker or Podman.
 
 [Run the walkthrough](https://github.com/red-hat-ai-dev/vLLM-zero-to-hero)
 

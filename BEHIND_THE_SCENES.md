@@ -18,7 +18,23 @@ vllm serve Qwen/Qwen3.5-2B \
 
 ## Launcher
 
-`run.sh` detects Podman or Docker. Set `ENGINE` to select one:
+`run.sh` detects the accelerator and selects the CUDA, ROCm, or XPU image. It checks for NVIDIA tooling, AMD kernel devices, and Intel Direct Rendering Infrastructure devices.
+
+Override accelerator detection when needed:
+
+```bash
+./run.sh nvidia
+```
+
+```bash
+./run.sh amd
+```
+
+```bash
+./run.sh intel
+```
+
+The script also detects Podman or Docker. Set `ENGINE` to select one:
 
 ```bash
 ENGINE=docker ./run.sh nvidia

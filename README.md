@@ -19,21 +19,11 @@ cd vLLM-zero-to-hero
 
 ## 2. Start vLLM
 
-Choose your accelerator:
-
 ```bash
-./run.sh nvidia
+./run.sh
 ```
 
-```bash
-./run.sh amd
-```
-
-```bash
-./run.sh intel
-```
-
-The first start downloads Qwen3.5-2B from Hugging Face. The script stores the model in a container volume for later runs.
+The script detects the accelerator and starts its vLLM image. The first start downloads Qwen3.5-2B from Hugging Face. The script stores the model in a container volume for later runs.
 
 ## 3. Send a request
 

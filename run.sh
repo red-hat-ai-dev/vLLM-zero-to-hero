@@ -4,8 +4,8 @@ set -eu
 name="vllm-zero-to-hero"
 volume="vllm-models"
 
-if [ "$#" -ne 1 ]; then
-  echo "Usage: ./run.sh nvidia|amd|intel" >&2
+if [ "$#" -gt 1 ]; then
+  echo "Usage: ./run.sh [nvidia|amd|intel]" >&2
   exit 1
 fi
 
@@ -25,7 +25,33 @@ if "$engine" container inspect "$name" >/dev/null 2>&1; then
   exit 1
 fi
 
-case "$1" in
+if [ "$#" -eq 1 ]; then
+  accelerator="$1"
+elif command -v nvidia-smi >/dev/null 2>&1 || [ -e /dev/nvidiactl ]; then
+  accelerator="nvidia"
+elif [ -e /dev/kfd ]; then
+  accelerator="amd"
+else
+  accelerator=""
+  for vendor_file in /sys/class/drm/card*/device/vendor; do
+    [ -r "$vendor_file" ] || continue
+    if [ "$(cat "$vendor_file")" = "0x8086" ]; then
+      accelerator="intel"
+      break
+    fi
+  done
+fi
+
+if [ -z "$accelerator" ]; then
+  echo "No supported accelerator is visible." >&2
+  echo "Configure accelerator passthrough for Docker or Podman, then try again." >&2
+  echo "You can override detection with ./run.sh nvidia|amd|intel." >&2
+  exit 1
+fi
+
+echo "Detected accelerator: $accelerator"
+
+case "$accelerator" in
   nvidia)
     image="ghcr.io/red-hat-ai-dev/vllm-zero-to-hero:cuda"
     if [ "$engine" = "podman" ]; then
@@ -45,8 +71,8 @@ case "$1" in
       -v /dev/dri/by-path:/dev/dri/by-path --privileged
     ;;
   *)
-    echo "Unknown accelerator: $1" >&2
-    echo "Usage: ./run.sh nvidia|amd|intel" >&2
+    echo "Unknown accelerator: $accelerator" >&2
+    echo "Usage: ./run.sh [nvidia|amd|intel]" >&2
     exit 1
     ;;
 esac
@@ -55,4 +81,3 @@ esac
   -v "$volume:/root/.cache/huggingface" "$image"
 
 echo "vLLM is starting. Run ./request.sh to wait for it and send a request."
-
