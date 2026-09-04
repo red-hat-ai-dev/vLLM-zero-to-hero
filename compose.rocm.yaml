@@ -1,0 +1,20 @@
+services:
+  vllm:
+    image: ghcr.io/red-hat-ai-dev/vllm-zero-to-hero:rocm
+    ports:
+      - "8000:8000"
+    ipc: host
+    volumes:
+      - vllm-models:/root/.cache/huggingface
+    group_add:
+      - video
+    devices:
+      - /dev/kfd:/dev/kfd
+      - /dev/dri:/dev/dri
+    security_opt:
+      - seccomp=unconfined
+    cap_add:
+      - SYS_PTRACE
+
+volumes:
+  vllm-models:
