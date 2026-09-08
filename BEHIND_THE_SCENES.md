@@ -164,7 +164,7 @@ XPU uses the Direct Rendering Infrastructure devices:
 Consult the [vLLM installation guide](https://docs.vllm.ai/en/latest/getting_started/installation/)
 for current hardware and driver requirements.
 
-## Errors and cleanup
+## Errors and automatic startup cleanup
 
 The launcher waits up to 30 minutes because first-time installation and model
 downloads can be slow. While it waits, it also checks whether the process or
@@ -177,6 +177,39 @@ is ready, it stays in the background until `./stop.sh` is run.
 `stop.sh` understands both backends. It stops the native Metal process when a
 Metal PID file exists; otherwise, it removes the Linux container. It succeeds
 quietly if neither one is running.
+
+## Complete local cleanup
+
+`./cleanup.sh` is for someone who wants to remove the local setup, not merely
+stop the server. Before deleting anything, it lists the resources and asks for
+confirmation. Pressing Enter or answering anything other than `y` or `yes`
+cancels safely. `./cleanup.sh --yes` is available for intentional,
+non-interactive cleanup.
+
+On Apple Silicon, cleanup removes only these managed paths:
+
+```text
+~/.venv-vllm-metal
+~/.cache/huggingface/hub/models--mlx-community--Qwen3.5-2B-4bit
+~/.cache/huggingface/hub/.locks/models--mlx-community--Qwen3.5-2B-4bit
+${TMPDIR:-/tmp}/vllm-zero-to-hero
+```
+
+If `HF_HOME` is set, the two model paths use that directory instead of
+`~/.cache/huggingface`. Cleanup does not remove the rest of the Hugging Face
+cache. If `VLLM_METAL_VENV` points to a custom environment, that custom path is
+reported and preserved; only the default environment managed by this project is
+removed.
+
+On Linux, cleanup removes the `vllm-zero-to-hero` container, the
+`vllm-models` volume, and temporary project state. The container image stays in
+Docker or Podman's image cache. If the engine is installed but stopped, cleanup
+asks the user to start it rather than pretending that its volume was removed.
+
+Cleanup calls `stop.sh` first. If the running server cannot be stopped, cleanup
+aborts before deleting its environment or model data. Running cleanup again
+after it has completed is safe: missing resources are reported as already
+removed.
 
 ## Build the container images
 

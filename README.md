@@ -78,6 +78,19 @@ computer.
 Stopping the server keeps the downloaded model so the next start is faster.
 Running `./stop.sh` when the server is already stopped is safe.
 
+## Completely remove the local setup
+
+```bash
+./cleanup.sh
+```
+
+Cleanup shows exactly what it will remove and asks for confirmation. It deletes
+the vLLM Metal environment and example model on a Mac, or the project model
+volume on Linux. Other Hugging Face models and container images are left alone.
+
+The next `./run.sh` reinstalls or downloads the required files. Use
+`./cleanup.sh --yes` only when you intentionally want to skip the confirmation.
+
 ## If something goes wrong
 
 The launcher reports the likely problem and, when available, shows recent vLLM
