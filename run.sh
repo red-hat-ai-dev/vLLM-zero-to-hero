@@ -10,6 +10,7 @@ log_file="$state_dir/metal.log"
 metal_venv="${VLLM_METAL_VENV:-$HOME/.venv-vllm-metal}"
 metal_model="mlx-community/Qwen3.5-2B-4bit"
 served_model="qwen3.5-2b"
+managed_label="io.github.red-hat-ai-dev.vllm-zero-to-hero.managed"
 backend=""
 metal_pid=""
 
@@ -98,6 +99,57 @@ wait_until_ready() {
   echo "vLLM is ready at http://127.0.0.1:$port/v1"
 }
 
+engine_is_running() {
+  command -v "$1" >/dev/null 2>&1 && "$1" info >/dev/null 2>&1
+}
+
+engine_has_nvidia_support() {
+  candidate="$1"
+  case "$candidate" in
+    podman|*/podman)
+      "$candidate" info 2>/dev/null | grep -Fq "nvidia.com/gpu=all"
+      ;;
+    docker|*/docker)
+      "$candidate" info --format '{{json .Runtimes}}' 2>/dev/null |
+        grep -Fq '"nvidia"'
+      ;;
+    *) return 1 ;;
+  esac
+}
+
+cleanup_partial_container() {
+  label_value="$(
+    "$engine" inspect --format "{{ index .Config.Labels \"$managed_label\" }}" \
+      "$name" 2>/dev/null || true
+  )"
+  if [ "$label_value" = "true" ]; then
+    "$engine" rm --force "$name" >/dev/null 2>&1 || true
+  fi
+}
+
+show_nvidia_setup_error() {
+  selected_engine="${1:-}"
+  distro="Linux"
+  if [ -r /etc/os-release ]; then
+    detected_distro="$(sed -n 's/^PRETTY_NAME=//p' /etc/os-release | sed -n '1p' | tr -d '"')"
+    if [ -n "$detected_distro" ]; then
+      distro="$detected_distro"
+    fi
+  fi
+
+  if [ -n "$selected_engine" ]; then
+    error "ENGINE is set to '$selected_engine', but it cannot access the NVIDIA GPU."
+  else
+    error "NVIDIA works on this $distro host, but no running container engine can access it."
+  fi
+  echo "The NVIDIA driver is available, but GPU container support is not configured." >&2
+  echo "Install NVIDIA Container Toolkit, then run ./run.sh again:" >&2
+  echo "https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html" >&2
+  echo >&2
+  echo "Podman must list nvidia.com/gpu=all in: podman info" >&2
+  echo "Docker must list an nvidia runtime in: docker info" >&2
+}
+
 select_engine() {
   if [ -n "${ENGINE:-}" ]; then
     if ! command -v "$ENGINE" >/dev/null 2>&1; then
@@ -109,17 +161,44 @@ select_engine() {
       echo "Start $ENGINE, then run ./run.sh again." >&2
       exit 1
     fi
+    if [ "$accelerator" = "nvidia" ] && ! engine_has_nvidia_support "$ENGINE"; then
+      show_nvidia_setup_error "$ENGINE"
+      exit 1
+    fi
     engine="$ENGINE"
     return
   fi
 
-  if command -v podman >/dev/null 2>&1 && podman info >/dev/null 2>&1; then
-    engine="podman"
-  elif command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-    engine="docker"
-  else
+  podman_running="false"
+  docker_running="false"
+  if engine_is_running podman; then
+    podman_running="true"
+  fi
+  if engine_is_running docker; then
+    docker_running="true"
+  fi
+
+  if [ "$podman_running" = "false" ] && [ "$docker_running" = "false" ]; then
     error "No running container engine was found."
     echo "Install and start Docker or Podman, then run ./run.sh again." >&2
+    exit 1
+  fi
+
+  if [ "$accelerator" != "nvidia" ]; then
+    if [ "$podman_running" = "true" ]; then
+      engine="podman"
+    else
+      engine="docker"
+    fi
+    return
+  fi
+
+  if [ "$podman_running" = "true" ] && engine_has_nvidia_support podman; then
+    engine="podman"
+  elif [ "$docker_running" = "true" ] && engine_has_nvidia_support docker; then
+    engine="docker"
+  else
+    show_nvidia_setup_error
     exit 1
   fi
 }
@@ -164,6 +243,9 @@ run_linux() {
       ;;
   esac
 
+  detect_accelerator
+  echo "Detected Linux with $accelerator acceleration."
+
   select_engine
 
   if "$engine" container inspect "$name" >/dev/null 2>&1; then
@@ -172,15 +254,13 @@ run_linux() {
     exit 1
   fi
 
-  detect_accelerator
-  echo "Detected Linux with $accelerator acceleration."
   echo "Using $engine."
 
   case "$accelerator" in
     nvidia)
       image="ghcr.io/red-hat-ai-dev/vllm-zero-to-hero:cuda"
       if [ "$engine" = "podman" ]; then
-        set -- --device nvidia.com/gpu=all
+        set -- --device nvidia.com/gpu=all --security-opt=label=disable
       else
         set -- --gpus all
       fi
@@ -205,9 +285,11 @@ run_linux() {
   echo "Starting vLLM. The first run also downloads the model."
   if ! "$engine" run -d --name "$name" "$@" --ipc=host \
     -p "127.0.0.1:$port:8000" \
-    -v "$volume:/root/.cache/huggingface" "$image"; then
+    -v "$volume:/root/.cache/huggingface" \
+    --label "$managed_label=true" "$image"; then
+    cleanup_partial_container
     error "$engine could not start the vLLM container."
-    echo "Check that the container engine can access your accelerator and the image registry." >&2
+    echo "Review the error above. A partial container created by this launcher was removed when present." >&2
     exit 1
   fi
 

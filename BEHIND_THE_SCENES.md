@@ -93,8 +93,14 @@ port only on the host's loopback address:
 127.0.0.1:8000:8000
 ```
 
-The launcher checks that Podman or Docker is actually running. If both work,
-Podman is selected first. Set `ENGINE` to choose one explicitly:
+The launcher checks that Podman or Docker is actually running. For NVIDIA, it
+also checks GPU container support before downloading the large CUDA image.
+Podman must report the `nvidia.com/gpu=all` CDI device; Docker must report its
+`nvidia` runtime. If Podman is running without CDI but Docker is ready, Docker
+is selected automatically. For AMD and Intel, Podman remains the first choice.
+
+Set `ENGINE` to choose one explicitly. An explicit engine must still pass the
+same NVIDIA capability check:
 
 ```bash
 ENGINE=docker ./run.sh
@@ -133,11 +139,16 @@ Docker passes the accelerator with:
 Podman uses the NVIDIA Container Device Interface:
 
 ```bash
---device nvidia.com/gpu=all
+--device nvidia.com/gpu=all --security-opt=label=disable
 ```
 
-The host must have the NVIDIA driver and container toolkit or CDI configuration
-working before the launcher runs.
+The host must have the NVIDIA driver and
+[NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+working before the launcher runs. The driver makes `nvidia-smi` work on the
+host; the toolkit exposes that GPU safely inside containers. The launcher does
+not install privileged system packages automatically. If integration is
+missing, it reports the detected Linux distribution and stops before pulling
+the image.
 
 ### AMD
 
@@ -173,6 +184,10 @@ container has exited. An early exit prints the last 40 log lines immediately.
 If startup fails, times out, or is interrupted, the launcher removes the failed
 process or container. This makes the next `./run.sh` a clean retry. Once the API
 is ready, it stays in the background until `./stop.sh` is run.
+
+Container creation can fail after an engine has reserved the project name, for
+example when port 8000 is already occupied. The launcher also removes that
+partially created container before returning an error.
 
 `stop.sh` understands both backends. It stops the native Metal process when a
 Metal PID file exists; otherwise, it removes the Linux container. It succeeds
