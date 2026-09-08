@@ -22,6 +22,11 @@ The launcher supports:
   AMD, or Intel accelerator. Accelerator access must already work inside the
   container engine.
 
+NVIDIA users also need
+[NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+configured for their container engine. `nvidia-smi` confirms that the host
+driver works, but does not by itself give containers access to the GPU.
+
 Windows users can follow the Linux path from a compatible WSL2 environment.
 
 ## 1. Clone
@@ -97,7 +102,9 @@ The launcher reports the likely problem and, when available, shows recent vLLM
 logs. Common causes are:
 
 - Docker or Podman is installed but not running.
-- The accelerator is not available inside the container engine.
+- The accelerator is not available inside the container engine. On NVIDIA,
+  the launcher checks this before downloading the image and links to the
+  required Container Toolkit setup.
 - Port 8000 is already being used by another application.
 - The computer ran out of memory during model loading.
 - The first download was interrupted.
