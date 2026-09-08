@@ -1,17 +1,32 @@
 # vLLM Zero to Hero
 
-Start an OpenAI-compatible AI API on your accelerator. (Full details in [BEHIND_THE_SCENES](https://github.com/red-hat-ai-dev/vLLM-zero-to-hero/blob/main/BEHIND_THE_SCENES.md))
+Start a local, OpenAI-compatible AI API with one command. The launcher supports
+Apple Silicon Macs and Linux computers with NVIDIA, AMD, or Intel acceleration.
+
+Want to know what the launcher is doing? Read
+[Behind the scenes](BEHIND_THE_SCENES.md).
 
 ## Requirements
 
-- Linux
-- Docker or Podman
-- curl
-- A supported NVIDIA, AMD, or Intel accelerator
-- 8 GB of free device memory
-- Internet access for the first model download
+Every computer needs:
+
+- Git and curl
+- Internet access for the first setup and model download
+- At least 8 GB of available memory and several GB of free disk space
+
+The launcher supports:
+
+- **Apple Silicon:** an M-series Mac running macOS 15 or newer. The first run
+  installs the official stable vLLM Metal environment automatically.
+- **Linux:** an x86-64 computer with Docker or Podman and a supported NVIDIA,
+  AMD, or Intel accelerator. Accelerator access must already work inside the
+  container engine.
+
+Windows users can follow the Linux path from a compatible WSL2 environment.
 
 ## 1. Clone
+
+Open a terminal and run:
 
 ```bash
 git clone https://github.com/red-hat-ai-dev/vLLM-zero-to-hero.git
@@ -24,12 +39,23 @@ cd vLLM-zero-to-hero
 ./run.sh
 ```
 
-The script detects the accelerator and starts its vLLM image. The first start downloads Qwen3.5-2B from Hugging Face. The script stores the model in a container volume for later runs.
+The launcher detects the operating system and accelerator, explains what it is
+doing, and waits for the API to become ready. The first run takes longer because
+it installs any required software and downloads Qwen3.5-2B. Later starts reuse
+the downloaded files.
+
+Success looks like this:
+
+```text
+vLLM is ready at http://127.0.0.1:8000/v1
+```
 
 ## 3. Send a request
 
+Keep vLLM running and use another terminal:
+
 ```bash
-curl http://localhost:8000/v1/chat/completions \
+curl http://127.0.0.1:8000/v1/chat/completions \
   -H 'Content-Type: application/json' \
   -d '{
     "model": "qwen3.5-2b",
@@ -39,7 +65,9 @@ curl http://localhost:8000/v1/chat/completions \
   }'
 ```
 
-The response comes from an OpenAI-compatible endpoint at `http://localhost:8000/v1`.
+The generated answer is inside `choices[0].message.content` in the JSON
+response. It comes from an OpenAI-compatible API running locally on your
+computer.
 
 ## Stop
 
@@ -47,4 +75,22 @@ The response comes from an OpenAI-compatible endpoint at `http://localhost:8000/
 ./stop.sh
 ```
 
-Read [Behind the scenes](BEHIND_THE_SCENES.md) for the `vllm serve` command, container flags, image builds, and model options.
+Stopping the server keeps the downloaded model so the next start is faster.
+Running `./stop.sh` when the server is already stopped is safe.
+
+## If something goes wrong
+
+The launcher reports the likely problem and, when available, shows recent vLLM
+logs. Common causes are:
+
+- Docker or Podman is installed but not running.
+- The accelerator is not available inside the container engine.
+- Port 8000 is already being used by another application.
+- The computer ran out of memory during model loading.
+- The first download was interrupted.
+
+Fix the reported problem and run `./run.sh` again. Failed starts are cleaned up
+automatically.
+
+Read [Behind the scenes](BEHIND_THE_SCENES.md) for platform detection, vLLM
+Metal, container flags, logs, image builds, and model options.
