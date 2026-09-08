@@ -107,7 +107,11 @@ engine_has_nvidia_support() {
   candidate="$1"
   case "$candidate" in
     podman|*/podman)
-      "$candidate" info 2>/dev/null | grep -Fq "nvidia.com/gpu=all"
+      if "$candidate" info 2>/dev/null | grep -Fq "nvidia.com/gpu=all"; then
+        return 0
+      fi
+      command -v nvidia-ctk >/dev/null 2>&1 &&
+        nvidia-ctk cdi list 2>/dev/null | grep -Fq "nvidia.com/gpu=all"
       ;;
     docker|*/docker)
       "$candidate" info --format '{{json .Runtimes}}' 2>/dev/null |
@@ -146,7 +150,7 @@ show_nvidia_setup_error() {
   echo "Install NVIDIA Container Toolkit, then run ./run.sh again:" >&2
   echo "https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html" >&2
   echo >&2
-  echo "Podman must list nvidia.com/gpu=all in: podman info" >&2
+  echo "Podman must list nvidia.com/gpu=all in: nvidia-ctk cdi list" >&2
   echo "Docker must list an nvidia runtime in: docker info" >&2
 }
 

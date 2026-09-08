@@ -95,9 +95,11 @@ port only on the host's loopback address:
 
 The launcher checks that Podman or Docker is actually running. For NVIDIA, it
 also checks GPU container support before downloading the large CUDA image.
-Podman must report the `nvidia.com/gpu=all` CDI device; Docker must report its
-`nvidia` runtime. If Podman is running without CDI but Docker is ready, Docker
-is selected automatically. For AMD and Intel, Podman remains the first choice.
+Podman must report the `nvidia.com/gpu=all` CDI device through `podman info` or
+`nvidia-ctk cdi list`; Docker must report its `nvidia` runtime. The second
+Podman check supports releases that can use CDI but omit resolved devices from
+`podman info`. If Podman is running without CDI but Docker is ready, Docker is
+selected automatically. For AMD and Intel, Podman remains the first choice.
 
 Set `ENGINE` to choose one explicitly. An explicit engine must still pass the
 same NVIDIA capability check:
