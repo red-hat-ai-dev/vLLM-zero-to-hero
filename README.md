@@ -109,6 +109,8 @@ logs. Common causes are:
 - The computer ran out of memory during model loading.
 - The first download was interrupted.
 
+# TODO ADD SLACK CHANNEL
+
 Fix the reported problem and run `./run.sh` again. Failed starts are cleaned up
 automatically.
 
